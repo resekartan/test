@@ -2498,6 +2498,9 @@ function addRoute(coordinates) {
 			'line-opacity': 0.8
 		}
 	});
+	
+	if (map.getLayer('route-buffer')) map.moveLayer('route-buffer');
+    if (map.getLayer('route')) map.moveLayer('route');
 
 	const currentRadius = parseInt(document.getElementById('route-radius')?.value || 50);
 	updateRouteBuffer(coordinates, currentRadius);
