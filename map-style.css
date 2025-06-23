@@ -216,7 +216,12 @@ html {
 }
 
 #share-route {
-    display: none;
+    display: none !important; /* Använd !important för att överskrida andra stilar */
+}
+
+/* Lägg till en ny stil för att visa knappen när den är aktiv */
+#share-route.show {
+    display: flex !important;
 }
 
 .sidenav button,
@@ -1806,9 +1811,6 @@ body.sidenav-open #map {
     margin: 60px 0 0;
   }
   
-#share-route {
-    display: none;
-}
 
 
   body.sidenav-open #map {

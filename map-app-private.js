@@ -680,6 +680,7 @@ function addClickablePointsAndLines() {
 		selectedFeature = feature;
 
 currentPopup = new mapboxgl.Popup({
+		focusAfterOpen: false,
         closeButton: true,
         closeOnClick: true,
         maxWidth: '300px'
@@ -1020,6 +1021,7 @@ function renderRouteAttractions(features) {
 			selectedFeature = feature;
 
 			currentPopup = new mapboxgl.Popup({
+				focusAfterOpen: false,
 					closeButton: true,
 					closeOnClick: false,
 					className: 'feature-popup'
@@ -1198,6 +1200,7 @@ if (searchBtn) {
 			itemContainer.addEventListener('mouseover', () => {
 				if ((!selectedFeature || selectedFeature.properties.Name !== name) && !currentPopup) {
 					currentPopup = new mapboxgl.Popup({
+						focusAfterOpen: false,
 							closeButton: false,
 							closeOnClick: false
 						})
@@ -1632,6 +1635,7 @@ function initializeListingFunctionality() {
 					selectedFeature = feature;
 
 					currentPopup = new mapboxgl.Popup({
+						focusAfterOpen: false,
 							closeButton: true,
 							closeOnClick: false,
 							className: 'feature-popup'
@@ -1811,6 +1815,7 @@ if (popupEl) {
 					itemContainer.addEventListener('mouseover', () => {
 						if ((!selectedFeature || selectedFeature.properties.Name !== name) && !currentPopup) {
 							currentPopup = new mapboxgl.Popup({
+								focusAfterOpen: false,
 									closeButton: false,
 									closeOnClick: false
 								})
@@ -2070,7 +2075,7 @@ function toggleMenu() {
 	const menuToggleContainer = document.querySelector('.menu-toggle-container');
 	const sidenavContent = document.querySelector('.sidenav-content');
 	const body = document.body;
-
+	const searchContainer = document.getElementById('search-container'); // saknades i din kod
 
 	function resetRouteData() {
 		startCoords = null;
@@ -2110,34 +2115,36 @@ function toggleMenu() {
 	menuToggleContainer.classList.add('open');
 
 	if (bottomMenu.style.display === 'flex') {
+		// Menyn STÄNGS
 		bottomMenu.style.display = 'none';
 		mapElement.style.height = '100%';
 		mapElement.classList.remove('list-view');
 		buttonContainer.style.display = 'flex';
 		tabContent.style.display = 'none';
-		searchContainer.classList.remove('search-visible');
-		menuButton.classList.remove('close');
+		if (searchContainer) searchContainer.classList.remove('search-visible');
+		if (menuButton) menuButton.classList.remove('close');
 		sidenavContent.classList.remove('tab-active');
 		resetRouteData();
 	} else {
-
 		const isOpen = mySidenav.classList.contains('open');
 
 		if (isOpen) {
+			// Menyn STÄNGS
 			mySidenav.classList.remove('open');
 			body.classList.remove('sidenav-open');
 			buttonContainer.style.display = 'flex';
 			tabContent.style.display = 'none';
-			searchContainer.classList.remove('search-visible');
-			menuButton.classList.remove('close');
+			if (searchContainer) searchContainer.classList.remove('search-visible');
+			if (menuButton) menuButton.classList.remove('close');
 			menuToggleContainer.classList.remove('open');
 			sidenavContent.classList.remove('tab-active');
 			resetRouteData();
 		} else {
+			// Menyn ÖPPNAS
 			mySidenav.classList.add('open');
 			body.classList.add('sidenav-open');
-			searchContainer.classList.add('search-visible');
-			menuButton.classList.add('close');
+			if (searchContainer) searchContainer.classList.add('search-visible');
+			if (menuButton) menuButton.classList.add('close');
 			buttonContainer.style.display = 'flex';
 			sidenavContent.classList.remove('tab-active');
 		}
@@ -2147,7 +2154,6 @@ function toggleMenu() {
 		map.resize();
 	}, 300);
 }
-
 
 window.addEventListener('resize', () => {
 	const mySidenav = document.getElementById('mySidenav');
@@ -2299,11 +2305,11 @@ function scrollToList() {
 		});
 	}
 }
-
 function calculateRoute(start, end) {
     // DÖLJ share-knappen i början (om den finns)
     let shareButton = document.getElementById('share-route');
     if (shareButton) {
+        shareButton.classList.remove('show');
         shareButton.style.display = 'none';
         shareButton.onclick = null;
     }
@@ -2386,13 +2392,12 @@ function calculateRoute(start, end) {
             const currentRadius = parseInt(document.getElementById('route-radius').value || 50);
             updateRouteAttractions(coordinates);
 
-            // --- KLISTRA IN DETTA DIREKT EFTER ATT INFO OCH ATTRAKTIONER UPPDATERATS ---
+            // Visa share-knappen nu när det finns ett resultat
             shareButton = document.getElementById('share-route');
             if (shareButton) {
-                shareButton.style.display = 'flex';
+                shareButton.classList.add('show');
                 shareButton.onclick = handleRouteShare;
             }
-            // --- SLUT ---
         })
         .catch(error => {
             console.error('Error calculating route:', error);
@@ -2403,6 +2408,13 @@ function calculateRoute(start, end) {
                     An error occurred while calculating the route. Please try again.
                 </div>
             `;
+            // DÖLJ share-knappen om det blir fel
+            let shareButton = document.getElementById('share-route');
+            if (shareButton) {
+                shareButton.classList.remove('show');
+                shareButton.style.display = 'none';
+                shareButton.onclick = null;
+            }
         });
 }
 
@@ -2430,14 +2442,15 @@ function clearRouteResults() {
         routeInfo.innerHTML = '';
     }
 
-    // --- KLISTRA IN DETTA I SLUTET ---
+    // DÖLJ share-knappen
     const shareButton = document.getElementById('share-route');
     if (shareButton) {
+        shareButton.classList.remove('show');
         shareButton.style.display = 'none';
         shareButton.onclick = null;
     }
-    // --- SLUT ---
 }
+
 function removeRoute() {
 	if (map.getSource('route')) {
 		map.removeLayer('route');
@@ -2723,6 +2736,7 @@ function displaySearchResults(features) {
 					if (isCustomFeature && !isCoordinate) {
 						searchMarker.remove();
 						currentPopup = new mapboxgl.Popup({
+							focusAfterOpen: false,
 								closeButton: true,
 								closeOnClick: true
 							})
@@ -2789,6 +2803,7 @@ if (popupEl) {
 				if (isCustomFeature && !isCoordinate) {
 					searchMarker.remove();
 					currentPopup = new mapboxgl.Popup({
+						focusAfterOpen: false,
 							closeButton: true,
 							closeOnClick: true
 						})
@@ -3248,7 +3263,13 @@ case 'tab4':
 			setTimeout(() => {
 				map.resize();
 			}, 300);
-			break;
+const menuButton = document.querySelector('.menu-toggle');
+const menuToggleContainer = document.querySelector('.menu-toggle-container');
+if (menuButton) menuButton.classList.add('close');
+if (menuToggleContainer) menuToggleContainer.classList.add('open');
+// --- SLUT ---
+
+break;
 	}
 }
 
@@ -3785,6 +3806,7 @@ function displaySearchResults(features) {
 				searchMarker.remove();
 
 				currentPopup = new mapboxgl.Popup({
+					focusAfterOpen: false,
 						closeButton: true,
 						closeOnClick: true
 					})
