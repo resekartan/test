@@ -215,7 +215,7 @@ map.on('load', () => {
     let rotationInterval = null;
 
     const startRotation = () => {
-        if (!isDesktop || rotationInterval || urlParams) return; // Don't start rotation if URL parameters exist
+        if (!isDesktop || rotationInterval || window.urlParams) return; // Kontrollera urlParams
 
         rotationInterval = window.setInterval(() => {
             if (!map.isMoving() && !map.isZooming()) {
@@ -290,6 +290,7 @@ map.on('load', () => {
     });
 
     initializeSearch();
+	loadSharedRoute();
 
     window.matchMedia('(min-width: 768px) and (pointer: fine)').addEventListener('change', (e) => {
         if (e.matches && !urlParams) {
@@ -2250,57 +2251,57 @@ function scrollToList() {
 }
 
 function calculateRoute(start, end) {
-	const straightLineDistance = turf.distance(
-		turf.point([start[0], start[1]]),
-		turf.point([end[0], end[1]]), {
-			units: 'kilometers'
-		}
-	);
+    const straightLineDistance = turf.distance(
+        turf.point([start[0], start[1]]),
+        turf.point([end[0], end[1]]), {
+            units: 'kilometers'
+        }
+    );
 
-	if (straightLineDistance > 2000) {
-		removeRoute();
-		clearRouteResults();
-		document.getElementById('route-info').innerHTML = `
+    if (straightLineDistance > 2000) {
+        removeRoute();
+        clearRouteResults();
+        document.getElementById('route-info').innerHTML = `
             <div class="route-error">
                 You have specified a route that exceeds our maximum of 2000 km (1243 mi). Please check your locations!
             </div>
         `;
-		return;
-	}
+        return;
+    }
 
-	const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`;
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`;
 
-	fetch(url)
-		.then(response => response.json())
-		.then(data => {
-			if (!data.routes || !data.routes[0]) {
-				throw new Error('No route found');
-			}
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.routes || !data.routes[0]) {
+                throw new Error('No route found');
+            }
 
-			const route = data.routes[0];
-			const distanceInKm = route.distance / 1000; // FIXAT!
+            const route = data.routes[0];
+            const distanceInKm = route.distance / 1000;
 
-			if (distanceInKm > 2000) {
-				removeRoute();
-				clearRouteResults();
-				document.getElementById('route-info').innerHTML = `
+            if (distanceInKm > 2000) {
+                removeRoute();
+                clearRouteResults();
+                document.getElementById('route-info').innerHTML = `
                     <div class="route-error">
                         You have specified a route that exceeds our maximum of 2000 km (1243 mi). Please check your locations!
                     </div>
                 `;
-				return;
-			}
+                return;
+            }
 
-			const coordinates = route.geometry.coordinates;
-			addRoute(coordinates);
+            const coordinates = route.geometry.coordinates;
+            addRoute(coordinates);
 
-			const durationMinutes = Math.round(route.duration / 60);
-			const hours = Math.floor(durationMinutes / 60);
-			const minutes = durationMinutes % 60;
-			const timeString = hours > 0 ? `${durationMinutes}min (${hours}h${minutes}min)` : `${durationMinutes}min`;
-			const distanceInMiles = distanceInKm * 0.621371;
+            const durationMinutes = Math.round(route.duration / 60);
+            const hours = Math.floor(durationMinutes / 60);
+            const minutes = durationMinutes % 60;
+            const timeString = hours > 0 ? `${durationMinutes}min (${hours}h${minutes}min)` : `${durationMinutes}min`;
+            const distanceInMiles = distanceInKm * 0.621371;
 
-			document.getElementById('route-info').innerHTML = `
+            document.getElementById('route-info').innerHTML = `
             <div class="route-details">
                 <p>
                     <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px; min-width: 16px;">
@@ -2325,19 +2326,28 @@ function calculateRoute(start, end) {
                 </p>
             </div>`;
 
-			const currentRadius = parseInt(document.getElementById('route-radius').value || 50);
-			updateRouteAttractions(coordinates);
-		})
-		.catch(error => {
-			console.error('Error calculating route:', error);
-			removeRoute();
-			clearRouteResults();
-			document.getElementById('route-info').innerHTML = `
+            const currentRadius = parseInt(document.getElementById('route-radius').value || 50);
+            updateRouteAttractions(coordinates);
+
+            // LÄGG TILL DENNA NYA KOD HÄR
+            const shareButton = document.getElementById('share-route');
+            if (shareButton) {
+                shareButton.style.display = 'flex';
+                shareButton.onclick = handleRouteShare;
+            }
+            // SLUT PÅ NY KOD
+
+        })
+        .catch(error => {
+            console.error('Error calculating route:', error);
+            removeRoute();
+            clearRouteResults();
+            document.getElementById('route-info').innerHTML = `
                 <div class="route-error">
                     An error occurred while calculating the route. Please try again.
                 </div>
             `;
-		});
+        });
 }
 
 
@@ -3018,10 +3028,16 @@ case 'tab4':
                             <input type="text" id="end-point" placeholder="Destination" autocomplete="off">
                             <div class="suggestions" id="end-suggestions"></div>
                         </div>
-                        <button id="calculate-route" class="popup-action-btn">
-                            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z" fill="#FFFFFF"/></svg>
-                            Find
-                        </button>
+<div class="button-group">
+    <button id="calculate-route" class="popup-action-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z" fill="#FFFFFF"/></svg>
+        Find
+    </button>
+    <button id="share-route" class="popup-action-btn" style="display: none;">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="#FFFFFF"/></svg>
+        Share
+    </button>
+</div>
                     </div>
                     <div class="inputs-width-container">
                         <span class="radius-label">Radius:</span>
@@ -3153,6 +3169,84 @@ case 'tab4':
 			}, 300);
 			break;
 	}
+}
+
+
+function createShareableRouteLink() {
+    if (!startCoords || !endCoords) return null;
+    
+    const params = new URLSearchParams();
+    // Spara de faktiska platsnamnen istället för koordinater
+    params.append('startName', document.getElementById('start-point').value);
+    params.append('endName', document.getElementById('end-point').value);
+    params.append('radius', document.getElementById('route-radius').value);
+    params.append('tab', 'route');
+    
+    const baseUrl = window.location.href.split('?')[0];
+    return `${baseUrl}?${params.toString()}`;
+}
+
+function handleRouteShare() {
+    const shareLink = createShareableRouteLink();
+    if (!shareLink) return;
+
+    navigator.clipboard.writeText(shareLink).then(() => {
+        createNotification('Share link copied to clipboard.');
+    }).catch(err => {
+        console.error('Failed to copy link:', err);
+        createNotification('Failed to copy share link.');
+    });
+}
+
+function loadSharedRoute() {
+    const params = new URLSearchParams(window.location.search);
+    const startName = params.get('startName');
+    const endName = params.get('endName');
+    const radiusParam = params.get('radius');
+    const tabParam = params.get('tab');
+
+    if (tabParam === 'route' && startName && endName) {
+        // Förhindra rotation genom att sätta urlParams
+        window.urlParams = true;
+        
+        selectTab('tab5');
+        
+        setTimeout(() => {
+            const startInput = document.getElementById('start-point');
+            const endInput = document.getElementById('end-point');
+            const radiusSlider = document.getElementById('route-radius');
+            const calculateButton = document.getElementById('calculate-route');
+            
+            // Sätt platsnamnen direkt
+            startInput.value = startName;
+            endInput.value = endName;
+            
+            // Använd platsnamnen för att få koordinater
+            Promise.all([
+                fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(startName)}.json?access_token=${mapboxgl.accessToken}`),
+                fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(endName)}.json?access_token=${mapboxgl.accessToken}`)
+            ])
+            .then(responses => Promise.all(responses.map(r => r.json())))
+            .then(([startData, endData]) => {
+                if (startData.features && startData.features[0]) {
+                    startCoords = startData.features[0].center;
+                }
+                if (endData.features && endData.features[0]) {
+                    endCoords = endData.features[0].center;
+                }
+                
+                if (radiusParam) {
+                    radiusSlider.value = radiusParam;
+                    const radiusEvent = new Event('input');
+                    radiusSlider.dispatchEvent(radiusEvent);
+                }
+                
+                if (startCoords && endCoords) {
+                    calculateButton.click();
+                }
+            });
+        }, 500);
+    }
 }
 
 function updateRouteBuffer(coordinates, radiusKm) {
