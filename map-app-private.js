@@ -2301,6 +2301,13 @@ function scrollToList() {
 }
 
 function calculateRoute(start, end) {
+    // DÖLJ share-knappen i början (om den finns)
+    let shareButton = document.getElementById('share-route');
+    if (shareButton) {
+        shareButton.style.display = 'none';
+        shareButton.onclick = null;
+    }
+
     const straightLineDistance = turf.distance(
         turf.point([start[0], start[1]]),
         turf.point([end[0], end[1]]), {
@@ -2379,14 +2386,13 @@ function calculateRoute(start, end) {
             const currentRadius = parseInt(document.getElementById('route-radius').value || 50);
             updateRouteAttractions(coordinates);
 
-            // LÄGG TILL DENNA NYA KOD HÄR
-            const shareButton = document.getElementById('share-route');
+            // --- KLISTRA IN DETTA DIREKT EFTER ATT INFO OCH ATTRAKTIONER UPPDATERATS ---
+            shareButton = document.getElementById('share-route');
             if (shareButton) {
                 shareButton.style.display = 'flex';
                 shareButton.onclick = handleRouteShare;
             }
-            // SLUT PÅ NY KOD
-
+            // --- SLUT ---
         })
         .catch(error => {
             console.error('Error calculating route:', error);
@@ -2400,31 +2406,37 @@ function calculateRoute(start, end) {
         });
 }
 
-
 function clearRouteResults() {
-	const routeListing = document.getElementById('route-attractions-listing');
-	if (routeListing) {
-		routeListing.innerHTML = '';
-	}
+    const routeListing = document.getElementById('route-attractions-listing');
+    if (routeListing) {
+        routeListing.innerHTML = '';
+    }
 
-	removeRoute();
+    removeRoute();
 
-	if (map.getSource('route-buffer')) {
-		map.getSource('route-buffer').setData({
-			type: 'Feature',
-			properties: {},
-			geometry: {
-				type: 'Polygon',
-				coordinates: []
-			}
-		});
-	}
+    if (map.getSource('route-buffer')) {
+        map.getSource('route-buffer').setData({
+            type: 'Feature',
+            properties: {},
+            geometry: {
+                type: 'Polygon',
+                coordinates: []
+            }
+        });
+    }
 
+    const routeInfo = document.getElementById('route-info');
+    if (routeInfo) {
+        routeInfo.innerHTML = '';
+    }
 
-	const routeInfo = document.getElementById('route-info');
-	if (routeInfo) {
-		routeInfo.innerHTML = '';
-	}
+    // --- KLISTRA IN DETTA I SLUTET ---
+    const shareButton = document.getElementById('share-route');
+    if (shareButton) {
+        shareButton.style.display = 'none';
+        shareButton.onclick = null;
+    }
+    // --- SLUT ---
 }
 
 function removeRoute() {
@@ -3078,16 +3090,16 @@ case 'tab4':
                             <input type="text" id="end-point" placeholder="Destination" autocomplete="off">
                             <div class="suggestions" id="end-suggestions"></div>
                         </div>
-<div class="button-group">
-    <button id="calculate-route" class="popup-action-btn">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z" fill="#FFFFFF"/></svg>
-        Find
-    </button>
-    <button id="share-route" class="popup-action-btn" style="display: none;">
-        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="#FFFFFF"/></svg>
-        Share
-    </button>
-</div>
+                    <div class="button-group">
+                        <button id="calculate-route" class="popup-action-btn">
+                            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z" fill="#FFFFFF"/></svg>
+                            Find
+                        </button>
+                        <button id="share-route" class="popup-action-btn" style="display: none;">
+                            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="#FFFFFF"/></svg>
+                            Share
+                        </button>
+                    </div>
                     </div>
                     <div class="inputs-width-container">
                         <span class="radius-label">Radius:</span>
@@ -3103,15 +3115,35 @@ case 'tab4':
         </div>
     `;
 
-			const routeRadiusSlider = document.getElementById('route-radius');
-			const radiusDisplay = document.getElementById('radius-display');
-			const radiusDisplayMiles = document.getElementById('radius-display-miles');
-			const startInput = document.getElementById('start-point');
-			const endInput = document.getElementById('end-point');
-			const startSuggestions = document.getElementById('start-suggestions');
-			const endSuggestions = document.getElementById('end-suggestions');
-			const calculateBtn = document.getElementById('calculate-route');
-			const routeInfo = document.getElementById('route-info');
+            const routeRadiusSlider = document.getElementById('route-radius');
+            const radiusDisplay = document.getElementById('radius-display');
+            const radiusDisplayMiles = document.getElementById('radius-display-miles');
+            const startInput = document.getElementById('start-point');
+            const endInput = document.getElementById('end-point');
+            const startSuggestions = document.getElementById('start-suggestions');
+            const endSuggestions = document.getElementById('end-suggestions');
+            const calculateBtn = document.getElementById('calculate-route');
+            const routeInfo = document.getElementById('route-info');
+
+            // ---- SHARE-KNAPPSETUP ----
+            const shareBtn = document.getElementById('share-route');
+            if (shareBtn) {
+                shareBtn.style.display = 'none';
+                shareBtn.onclick = handleRouteShare;
+            }
+            if (calculateBtn) {
+                calculateBtn.onclick = () => {
+                    if (!startCoords || !endCoords) {
+                        routeInfo.innerHTML = `
+                            <div class="route-error">
+                                Please select both start and destination points from the suggestions.
+                            </div>
+                        `;
+                        return;
+                    }
+                    calculateRoute(startCoords, endCoords);
+                };
+            }
 
 			if (startInput) startInput.value = '';
 			if (endInput) endInput.value = '';
