@@ -2438,7 +2438,6 @@ function clearRouteResults() {
     }
     // --- SLUT ---
 }
-
 function removeRoute() {
 	if (map.getSource('route')) {
 		map.removeLayer('route');
