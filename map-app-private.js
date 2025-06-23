@@ -622,7 +622,7 @@ map.on('style.load', () => {
 			'circle-color': '#002347'
 		}
 	});
-	if (map.getLayer('route-buffer')) map.moveLayer('route-buffer');
+    if (map.getLayer('route-buffer')) map.moveLayer('route-buffer');
     if (map.getLayer('route')) map.moveLayer('route');
     if (map.getLayer('measure-line')) map.moveLayer('measure-line');
     if (map.getLayer('measure-points')) map.moveLayer('measure-points');
@@ -2473,47 +2473,49 @@ function removeRoute() {
 	}
 }
 
+
 function addRoute(coordinates) {
-	removeRouteAndBuffer();
+    removeRouteAndBuffer();
 
-	map.addSource('route', {
-		'type': 'geojson',
-		'data': {
-			'type': 'Feature',
-			'properties': {},
-			'geometry': {
-				'type': 'LineString',
-				'coordinates': coordinates
-			}
-		}
-	});
+    map.addSource('route', {
+        'type': 'geojson',
+        'data': {
+            'type': 'Feature',
+            'properties': {},
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': coordinates
+            }
+        }
+    });
 
-	map.addLayer({
-		'id': 'route',
-		'type': 'line',
-		'source': 'route',
-		'layout': {
-			'line-join': 'round',
-			'line-cap': 'round'
-		},
-		'paint': {
-			'line-color': '#003366',
-			'line-width': 6,
-			'line-opacity': 0.8
-		}
-	});
-	
-	if (map.getLayer('route-buffer')) map.moveLayer('route-buffer');
+    map.addLayer({
+        'id': 'route',
+        'type': 'line',
+        'source': 'route',
+        'layout': {
+            'line-join': 'round',
+            'line-cap': 'round'
+        },
+        'paint': {
+            'line-color': '#003366',
+            'line-width': 6,
+            'line-opacity': 0.8
+        }
+    });
+
+    if (map.getLayer('route-buffer')) map.moveLayer('route-buffer');
     if (map.getLayer('route')) map.moveLayer('route');
 
-	const currentRadius = parseInt(document.getElementById('route-radius')?.value || 50);
-	updateRouteBuffer(coordinates, currentRadius);
 
-	const bounds = new mapboxgl.LngLatBounds();
-	coordinates.forEach(coord => bounds.extend(coord));
-	map.fitBounds(bounds, {
-		padding: 50
-	});
+    const currentRadius = parseInt(document.getElementById('route-radius')?.value || 50);
+    updateRouteBuffer(coordinates, currentRadius);
+
+    const bounds = new mapboxgl.LngLatBounds();
+    coordinates.forEach(coord => bounds.extend(coord));
+    map.fitBounds(bounds, {
+        padding: 50
+    });
 }
 
 async function getCoordinates(place) {
