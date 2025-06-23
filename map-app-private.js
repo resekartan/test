@@ -298,6 +298,9 @@ map.on('load', () => {
             stopRotation();
         }
     });
+
+    // ADD THIS LINE LAST IN THE HANDLER:
+    loadRouteFromUrl();
 });
 
 map.on('style.load', () => {
@@ -2250,73 +2253,88 @@ function scrollToList() {
 }
 
 function calculateRoute(start, end) {
-	const straightLineDistance = turf.distance(
-		turf.point([start[0], start[1]]),
-		turf.point([end[0], end[1]]), {
-			units: 'kilometers'
-		}
-	);
+    const straightLineDistance = turf.distance(
+        turf.point([start[0], start[1]]),
+        turf.point([end[0], end[1]]), {
+            units: 'kilometers'
+        }
+    );
 
-	if (straightLineDistance > 2000) {
-		removeRoute();
-		clearRouteResults();
-		document.getElementById('route-info').innerHTML = `
+    if (straightLineDistance > 2000) {
+        removeRoute();
+        clearRouteResults();
+        document.getElementById('route-info').innerHTML = `
             <div class="route-error">
                 You have specified a route that exceeds our maximum of 2000 km (1243 mi). Please check your locations!
             </div>
         `;
-		return;
-	}
+        return;
+    }
 
-	const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`;
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`;
 
-	fetch(url)
-		.then(response => response.json())
-		.then(data => {
-			if (!data.routes || !data.routes[0]) {
-				throw new Error('No route found');
-			}
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (!data.routes || !data.routes[0]) {
+                throw new Error('No route found');
+            }
 
-			const route = data.routes[0];
-			const distanceInKm = route.distance / 1000; // FIXAT!
+            const route = data.routes[0];
+            const distanceInKm = route.distance / 1000;
 
-			if (distanceInKm > 2000) {
-				removeRoute();
-				clearRouteResults();
-				document.getElementById('route-info').innerHTML = `
+            if (distanceInKm > 2000) {
+                removeRoute();
+                clearRouteResults();
+                document.getElementById('route-info').innerHTML = `
                     <div class="route-error">
                         You have specified a route that exceeds our maximum of 2000 km (1243 mi). Please check your locations!
                     </div>
                 `;
-				return;
-			}
+                return;
+            }
 
-			const coordinates = route.geometry.coordinates;
-			addRoute(coordinates);
+            const coordinates = route.geometry.coordinates;
+            addRoute(coordinates);
 
-			const durationMinutes = Math.round(route.duration / 60);
-			const hours = Math.floor(durationMinutes / 60);
-			const minutes = durationMinutes % 60;
-			const timeString = hours > 0 ? `${durationMinutes}min (${hours}h${minutes}min)` : `${durationMinutes}min`;
-			const distanceInMiles = distanceInKm * 0.621371;
+            const durationMinutes = Math.round(route.duration / 60);
+            const hours = Math.floor(durationMinutes / 60);
+            const minutes = durationMinutes % 60;
+            const timeString = hours > 0 ? `${hours}h${minutes}min` : `${durationMinutes}min`;
+            const distanceInMiles = distanceInKm * 0.621371;
 
-			document.getElementById('route-info').innerHTML = `
+            // Get the current radius
+            const currentRadius = parseInt(document.getElementById('route-radius').value || 50);
+
+            document.getElementById('route-info').innerHTML = `
             <div class="route-details">
-                <p>
-                    <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px; min-width: 16px;">
-                        <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-5h14v5z" fill="white"/>
-                        <circle cx="7.5" cy="14.5" r="1.5" fill="white"/>
-                        <circle cx="16.5" cy="14.5" r="1.5" fill="white"/>
-                    </svg>
-                    <span>${distanceInKm.toFixed(1)}km (${distanceInMiles.toFixed(1)}mi)</span>
-                </p>
-                <p>
-                    <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px; min-width: 16px;">
-                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" fill="white"/>
-                        <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="white"/>
-                    </svg>
-                    <span>${timeString}</span>
-                </p>
+                <div class="route-info-header">
+                    <div class="route-stats">
+                        <p>
+                            <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px; min-width: 16px;">
+                                <path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.85 7h10.29l1.04 3H5.81l1.04-3zM19 17H5v-5h14v5z" fill="white"/>
+                                <circle cx="7.5" cy="14.5" r="1.5" fill="white"/>
+                                <circle cx="16.5" cy="14.5" r="1.5" fill="white"/>
+                            </svg>
+                            <span>${distanceInKm.toFixed(1)}km (${distanceInMiles.toFixed(1)}mi)</span>
+                        </p>
+                        <p>
+                            <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px; min-width: 16px;">
+                                <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" fill="white"/>
+                                <path d="M12.5 7H11v6l5.25 3.15.75-1.23-4.5-2.67z" fill="white"/>
+                            </svg>
+                            <span>${timeString}</span>
+                        </p>
+                    </div>
+                    <div class="button-group">
+                        <button id="share-route" class="popup-action-btn">
+                            <svg viewBox="0 0 24 24" width="16" height="16">
+                                <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92z" fill="white"/>
+                            </svg>
+                            Share
+                        </button>
+                    </div>
+                </div>
                 <p onclick="scrollToList()" style="cursor: pointer;">
                     <svg viewBox="0 0 24 24" width="16" height="16" style="margin-right: 4px; min-width: 16px;">
                         <path d="M7.41 8.59L12 13.17l4.59-4.58c.39-.39 1.02-.39 1.41 0 .39.39.39 1.02 0 1.41L12.7 15.3a.9959.9959 0 0 1-1.41 0L6 10c-.39-.39-.39-1.02 0-1.41.39-.38 1.03-.39 1.41 0z M7.41 13.59L12 18.17l4.59-4.58c.39-.39 1.02-.39 1.41 0 .39.39.39 1.02 0 1.41L12.7 20.3a.9959.9959 0 0 1-1.41 0L6 15c-.39-.39-.39-1.02 0-1.41.39-.38 1.03-.39 1.41 0z" fill="white"/>
@@ -2325,21 +2343,32 @@ function calculateRoute(start, end) {
                 </p>
             </div>`;
 
-			const currentRadius = parseInt(document.getElementById('route-radius').value || 50);
-			updateRouteAttractions(coordinates);
-		})
-		.catch(error => {
-			console.error('Error calculating route:', error);
-			removeRoute();
-			clearRouteResults();
-			document.getElementById('route-info').innerHTML = `
+            // Add click handler for share button
+            const shareButton = document.getElementById('share-route');
+            if (shareButton) {
+                shareButton.onclick = () => {
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?start=${start[1]},${start[0]}&end=${end[1]},${end[0]}&radius=${currentRadius}&tab=route`;
+                    navigator.clipboard.writeText(shareUrl).then(() => {
+                        createNotification('Share link copied to clipboard.');
+                    }).catch(err => {
+                        console.error('Failed to copy URL:', err);
+                    });
+                };
+            }
+
+            updateRouteAttractions(coordinates);
+        })
+        .catch(error => {
+            console.error('Error calculating route:', error);
+            removeRoute();
+            clearRouteResults();
+            document.getElementById('route-info').innerHTML = `
                 <div class="route-error">
                     An error occurred while calculating the route. Please try again.
                 </div>
             `;
-		});
+        });
 }
-
 
 function clearRouteResults() {
 	const routeListing = document.getElementById('route-attractions-listing');
@@ -3018,10 +3047,16 @@ case 'tab4':
                             <input type="text" id="end-point" placeholder="Destination" autocomplete="off">
                             <div class="suggestions" id="end-suggestions"></div>
                         </div>
-                        <button id="calculate-route" class="popup-action-btn">
-                            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z" fill="#FFFFFF"/></svg>
-                            Find
-                        </button>
+<div class="button-group">
+    <button id="calculate-route" class="popup-action-btn">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z" fill="#FFFFFF"/></svg>
+        Find
+    </button>
+    <button id="share-route" class="popup-action-btn" style="display: none;">
+        <svg viewBox="0 0 24 24" width="16" height="16"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="#FFFFFF"/></svg>
+        Share
+    </button>
+</div>
                     </div>
                     <div class="inputs-width-container">
                         <span class="radius-label">Radius:</span>
@@ -3153,6 +3188,86 @@ case 'tab4':
 			}, 300);
 			break;
 	}
+}
+
+function createShareableUrl(startCoords, endCoords, radius) {
+    const baseUrl = window.location.origin + window.location.pathname;
+    const params = new URLSearchParams({
+        start: `${startCoords[1]},${startCoords[0]}`,
+        end: `${endCoords[1]},${endCoords[0]}`,
+        radius: radius.toString(),
+        tab: 'route'
+    });
+    return `${baseUrl}?${params.toString()}`;
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+        createNotification('Share link copied to clipboard.');
+    }).catch(err => {
+        console.error('Failed to copy text:', err);
+    });
+}
+
+function shareRoute() {
+    if (!startCoords || !endCoords) return;
+    
+    const radius = document.getElementById('route-radius').value;
+    const shareableUrl = createShareableUrl(startCoords, endCoords, radius);
+    copyToClipboard(shareableUrl);
+}
+
+function loadRouteFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    
+    if (params.has('start') && params.has('end')) {
+        const startParam = params.get('start').split(',').map(Number);
+        const endParam = params.get('end').split(',').map(Number);
+        const radius = params.get('radius');
+        
+        // Switch to route tab
+        if (params.get('tab') === 'route') {
+            selectTab('tab5');
+            
+            // Set radius if provided
+            if (radius) {
+                const radiusSlider = document.getElementById('route-radius');
+                if (radiusSlider) {
+                    radiusSlider.value = radius;
+                    // Update radius display
+                    const radiusKm = parseInt(radius);
+                    const radiusMiles = Math.round(radiusKm * 0.621371);
+                    document.getElementById('radius-display').textContent = radiusKm;
+                    document.getElementById('radius-display-miles').textContent = radiusMiles;
+                }
+            }
+            
+            // Convert coordinates to the format needed for reverse geocoding
+            startCoords = [endParam[1], endParam[0]];
+            endCoords = [startParam[1], startParam[0]];
+            
+            // Reverse geocode the coordinates to get place names
+            Promise.all([
+                fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${startCoords[0]},${startCoords[1]}.json?access_token=${mapboxgl.accessToken}`),
+                fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${endCoords[0]},${endCoords[1]}.json?access_token=${mapboxgl.accessToken}`)
+            ])
+            .then(responses => Promise.all(responses.map(r => r.json())))
+            .then(([startData, endData]) => {
+                const startInput = document.getElementById('start-point');
+                const endInput = document.getElementById('end-point');
+                
+                if (startInput && startData.features[0]) {
+                    startInput.value = startData.features[0].place_name;
+                }
+                if (endInput && endData.features[0]) {
+                    endInput.value = endData.features[0].place_name;
+                }
+                
+                // Calculate the route
+                calculateRoute(startCoords, endCoords);
+            });
+        }
+    }
 }
 
 function updateRouteBuffer(coordinates, radiusKm) {
