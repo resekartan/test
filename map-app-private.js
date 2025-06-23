@@ -622,6 +622,10 @@ map.on('style.load', () => {
 			'circle-color': '#002347'
 		}
 	});
+	if (map.getLayer('route-buffer')) map.moveLayer('route-buffer');
+    if (map.getLayer('route')) map.moveLayer('route');
+    if (map.getLayer('measure-line')) map.moveLayer('measure-line');
+    if (map.getLayer('measure-points')) map.moveLayer('measure-points');
 });
 
 function addClickablePointsAndLines() {
