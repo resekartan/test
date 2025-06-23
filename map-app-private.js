@@ -6,6 +6,7 @@ const initialCenter = [45, 25];
 
 // Get URL parameters before initializing the map
 const urlParams = getUrlParameters();
+const routeParams = getRouteParameters();
 
 const map = new mapboxgl.Map({
     container: 'map',
@@ -29,6 +30,14 @@ const map = new mapboxgl.Map({
     attributionControl: false,
     trackResize: true
 });
+
+// Hantera route-parametrar efter att kartan har laddats
+if (routeParams) {
+    map.on('load', () => {
+        selectTab('tab5');
+        // Övrig logik för att hantera rutt-parametrar
+    });
+}
 
 if (map.getSource('custom-data')) {
     map.setLayerZoomRange('custom-data', 2, 17);
@@ -214,20 +223,21 @@ map.on('load', () => {
     const isDesktop = window.matchMedia('(min-width: 768px) and (pointer: fine)').matches;
     let rotationInterval = null;
 
-    const startRotation = () => {
-        if (!isDesktop || rotationInterval || window.urlParams) return; // Kontrollera urlParams
+const startRotation = () => {
+    // Stoppa rotation om det finns URL-parametrar eller routeParams
+    if (!isDesktop || rotationInterval || urlParams || routeParams) return;
 
-        rotationInterval = window.setInterval(() => {
-            if (!map.isMoving() && !map.isZooming()) {
-                const center = map.getCenter();
-                let newLng = center.lng - 0.07;
-                if (newLng < -180) {
-                    newLng = 180;
-                }
-                map.setCenter([newLng, center.lat]);
+    rotationInterval = window.setInterval(() => {
+        if (!map.isMoving() && !map.isZooming()) {
+            const center = map.getCenter();
+            let newLng = center.lng - 0.07;
+            if (newLng < -180) {
+                newLng = 180;
             }
-        }, 50);
-    };
+            map.setCenter([newLng, center.lat]);
+        }
+    }, 50);
+};
 
     const stopRotation = () => {
         if (rotationInterval) {
@@ -236,10 +246,10 @@ map.on('load', () => {
         }
     };
 
-    // Only start rotation if there are no URL parameters
-    if (isDesktop && !urlParams) {
-        startRotation();
-    }
+// Only start rotation if there are no URL parameters and no route parameters
+if (isDesktop && !urlParams && !routeParams) {
+    startRotation();
+}
 
     [
         'mousedown',
@@ -290,7 +300,7 @@ map.on('load', () => {
     });
 
     initializeSearch();
-	loadSharedRoute();
+
 
     window.matchMedia('(min-width: 768px) and (pointer: fine)').addEventListener('change', (e) => {
         if (e.matches && !urlParams) {
@@ -1017,6 +1027,46 @@ function renderRouteAttractions(features) {
 				.setLngLat(coordinates)
 				.setHTML(getPopupContent(feature, coordinates))
 				.addTo(map);
+				
+				
+// LÄGG TILL DENNA KOD HÄR:
+const popupEl = currentPopup.getElement();
+
+// Navigate
+const navBtn = popupEl.querySelector('.popup-action-btn.navigate');
+if (navBtn) {
+    navBtn.addEventListener('click', function() {
+        const coords = navBtn.getAttribute('data-coords').split(',').map(Number);
+        navigateToLocation(coords);
+    });
+}
+
+// Save
+const saveBtn = popupEl.querySelector('.popup-action-btn.save');
+if (saveBtn) {
+    saveBtn.addEventListener('click', function() {
+        const name = decodeURIComponent(saveBtn.getAttribute('data-name'));
+        updateSaveState(name);
+    });
+}
+
+// Images
+const imagesBtn = popupEl.querySelector('.popup-action-btn.images');
+if (imagesBtn) {
+    imagesBtn.addEventListener('click', function() {
+        const name = decodeURIComponent(imagesBtn.getAttribute('data-name'));
+        searchGoogleImages(name);
+    });
+}
+
+// Search
+const searchBtn = popupEl.querySelector('.popup-action-btn.search');
+if (searchBtn) {
+    searchBtn.addEventListener('click', function() {
+        const name = decodeURIComponent(searchBtn.getAttribute('data-name'));
+        searchGoogle(name);
+    });
+}
 
 			currentPopup.on('close', () => {
 				if (container.classList.contains('active-listing')) {
@@ -3176,9 +3226,12 @@ function createShareableRouteLink() {
     if (!startCoords || !endCoords) return null;
     
     const params = new URLSearchParams();
-    // Spara de faktiska platsnamnen istället för koordinater
     params.append('startName', document.getElementById('start-point').value);
     params.append('endName', document.getElementById('end-point').value);
+    params.append('startLat', startCoords[1]);
+    params.append('startLng', startCoords[0]);
+    params.append('endLat', endCoords[1]);
+    params.append('endLng', endCoords[0]);
     params.append('radius', document.getElementById('route-radius').value);
     params.append('tab', 'route');
     
@@ -3198,53 +3251,54 @@ function handleRouteShare() {
     });
 }
 
-function loadSharedRoute() {
+async function loadSharedRoute() {
     const params = new URLSearchParams(window.location.search);
     const startName = params.get('startName');
     const endName = params.get('endName');
+    const startLat = parseFloat(params.get('startLat'));
+    const startLng = parseFloat(params.get('startLng'));
+    const endLat = parseFloat(params.get('endLat'));
+    const endLng = parseFloat(params.get('endLng'));
     const radiusParam = params.get('radius');
     const tabParam = params.get('tab');
 
-    if (tabParam === 'route' && startName && endName) {
-        // Förhindra rotation genom att sätta urlParams
-        window.urlParams = true;
+    if (tabParam === 'route' && startName && endName && 
+        !isNaN(startLat) && !isNaN(startLng) && 
+        !isNaN(endLat) && !isNaN(endLng)) {
         
+        // Vänta på att attractionsData laddas
+        if (!attractionsData) {
+            await new Promise(resolve => {
+                const checkData = setInterval(() => {
+                    if (attractionsData) {
+                        clearInterval(checkData);
+                        resolve();
+                    }
+                }, 100);
+            });
+        }
+
         selectTab('tab5');
         
         setTimeout(() => {
             const startInput = document.getElementById('start-point');
             const endInput = document.getElementById('end-point');
             const radiusSlider = document.getElementById('route-radius');
-            const calculateButton = document.getElementById('calculate-route');
             
-            // Sätt platsnamnen direkt
+            // Sätt platsnamnen och koordinaterna direkt
             startInput.value = startName;
             endInput.value = endName;
+            startCoords = [startLng, startLat];
+            endCoords = [endLng, endLat];
             
-            // Använd platsnamnen för att få koordinater
-            Promise.all([
-                fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(startName)}.json?access_token=${mapboxgl.accessToken}`),
-                fetch(`https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(endName)}.json?access_token=${mapboxgl.accessToken}`)
-            ])
-            .then(responses => Promise.all(responses.map(r => r.json())))
-            .then(([startData, endData]) => {
-                if (startData.features && startData.features[0]) {
-                    startCoords = startData.features[0].center;
-                }
-                if (endData.features && endData.features[0]) {
-                    endCoords = endData.features[0].center;
-                }
-                
-                if (radiusParam) {
-                    radiusSlider.value = radiusParam;
-                    const radiusEvent = new Event('input');
-                    radiusSlider.dispatchEvent(radiusEvent);
-                }
-                
-                if (startCoords && endCoords) {
-                    calculateButton.click();
-                }
-            });
+            if (radiusParam) {
+                radiusSlider.value = radiusParam;
+                const radiusEvent = new Event('input');
+                radiusSlider.dispatchEvent(radiusEvent);
+            }
+            
+            // Beräkna rutt och uppdatera attraktion automatiskt
+            calculateRoute(startCoords, endCoords);
         }, 500);
     }
 }
@@ -3394,10 +3448,10 @@ searchClear.addEventListener('click', () => {
 });
 
 async function initializeSearch() {
-	try {
-		const response = await fetch('generator.geojson');
-		const data = await response.json();
-		attractionsData = data;
+    try {
+        const response = await fetch('generator.geojson');
+        const data = await response.json();
+        attractionsData = data;
 
 		if (data && data.features) {
 			searchIndex = data.features.reduce((acc, feature) => {
@@ -3427,6 +3481,7 @@ async function initializeSearch() {
 				console.log('No features found in data, fuseIndex not initialized');
 			}
 		}
+		loadSharedRoute();
 	} catch (error) {
 		console.error('Error loading search data:', error);
 		fuseIndex = new Fuse([], {
@@ -3553,8 +3608,18 @@ function getUrlParameters() {
     return null;
 }
 
-
-
+function getRouteParameters() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('startName') && params.get('endName')) {
+        return {
+            startName: params.get('startName'),
+            endName: params.get('endName'),
+            radius: params.get('radius'),
+            tab: params.get('tab')
+        };
+    }
+    return null;
+}
 
 function searchLocalFeatures(query) {
 	query = query.toLowerCase();
