@@ -99,6 +99,7 @@ let selectedFeature = null;
 let touchStartY;
 let bufferUpdateTimeout;
 let layerVisibility = {};
+let currentRouteCoordinates = null;
 
 function escapeHtml(text) {
     if (!text) return '';
@@ -317,45 +318,45 @@ map.on('style.load', () => {
 	const currentStyle = map.getStyle().sprite;
 	const styleCircles = document.querySelectorAll('.style-circle');
 
-	[
-		['custom-data', {
-			type: 'vector',
-			url: 'mapbox://resekartan.cm1mwsfmz0ssz1mmxjutycoso-2uzy7'
-		}],
-		['measure-line', {
-			type: 'geojson',
-			data: {
-				type: 'Feature',
-				properties: {},
-				geometry: {
-					type: 'LineString',
-					coordinates: []
-				}
-			}
-		}],
-		['measure-points', {
-			type: 'geojson',
-			data: {
-				type: 'FeatureCollection',
-				features: []
-			}
-		}],
-		['route-buffer', {
-			type: 'geojson',
-			data: {
-				type: 'Feature',
-				properties: {},
-				geometry: {
-					type: 'Polygon',
-					coordinates: []
-				}
-			}
-		}]
-	].forEach(([id, source]) => {
-		if (!map.getSource(id)) {
-			map.addSource(id, source);
-		}
-	});
+   [
+        ['custom-data', {
+            type: 'vector',
+            url: 'mapbox://resekartan.cm1mwsfmz0ssz1mmxjutycoso-2uzy7'
+        }],
+        ['measure-line', {
+            type: 'geojson',
+            data: {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'LineString',
+                    coordinates: []
+                }
+            }
+        }],
+        ['measure-points', {
+            type: 'geojson',
+            data: {
+                type: 'FeatureCollection',
+                features: []
+            }
+        }],
+        ['route-buffer', {
+            type: 'geojson',
+            data: {
+                type: 'Feature',
+                properties: {},
+                geometry: {
+                    type: 'Polygon',
+                    coordinates: []
+                }
+            }
+        }]
+    ].forEach(([id, source]) => {
+        if (!map.getSource(id)) {
+            map.addSource(id, source);
+        }
+    });
 
 	const markerLayers = [{
 			id: 'green_markers',
@@ -587,45 +588,104 @@ map.on('style.load', () => {
 		}
 	});
 
-	['route-buffer', 'measure-line', 'measure-points'].forEach(layerId => {
-		if (map.getLayer(layerId)) map.removeLayer(layerId);
-	});
+   ['route-buffer', 'measure-line', 'measure-points'].forEach(layerId => {
+        if (map.getLayer(layerId)) map.removeLayer(layerId);
+    });
 
-	map.addLayer({
-		'id': 'route-buffer',
-		'type': 'fill',
-		'source': 'route-buffer',
-		'layout': {},
-		'paint': {
-			'fill-color': '#d222d2',
-			'fill-opacity': 0.3
-		}
-	});
+    map.addLayer({
+        'id': 'route-buffer',
+        'type': 'fill',
+        'source': 'route-buffer',
+        'layout': {},
+        'paint': {
+            'fill-color': '#d222d2',
+            'fill-opacity': 0.3
+        },
+        'minzoom': 2,
+        'maxzoom': 17,
+        'paint': {
+            'fill-color': '#d222d2',
+            'fill-opacity': 0.3,
+            'fill-antialias': true
+        }
+    });
 
-	map.addLayer({
-		'id': 'measure-line',
-		'type': 'line',
-		'source': 'measure-line',
-		'paint': {
-			'line-color': '#003366',
-			'line-width': 6,
-			'line-opacity': 0.8
-		}
-	});
+    map.addLayer({
+        'id': 'measure-line',
+        'type': 'line',
+        'source': 'measure-line',
+        'paint': {
+            'line-color': '#003366',
+            'line-width': 6,
+            'line-opacity': 0.8
+        },
+        'minzoom': 2,
+        'maxzoom': 17
+    });
 
-	map.addLayer({
-		'id': 'measure-points',
-		'type': 'circle',
-		'source': 'measure-points',
-		'paint': {
-			'circle-radius': 5,
-			'circle-color': '#002347'
-		}
-	});
-    if (map.getLayer('route-buffer')) map.moveLayer('route-buffer');
-    if (map.getLayer('route')) map.moveLayer('route');
-    if (map.getLayer('measure-line')) map.moveLayer('measure-line');
-    if (map.getLayer('measure-points')) map.moveLayer('measure-points');
+    map.addLayer({
+        'id': 'measure-points',
+        'type': 'circle',
+        'source': 'measure-points',
+        'paint': {
+            'circle-radius': 5,
+            'circle-color': '#002347'
+        },
+        'minzoom': 2,
+        'maxzoom': 17
+    });
+
+    // --- Lägg till dummy-lagret "always-top" sist ---
+    if (!map.getLayer('always-top')) {
+        map.addLayer({
+            id: 'always-top',
+            type: 'background',
+            paint: { 'background-color': 'rgba(0,0,0,0)' }
+        });
+    }
+
+    // --- Lägg tillbaka rutten (ruttlinjen) om den finns ---
+    if (currentRouteCoordinates) {
+        if (!map.getSource('route')) {
+            map.addSource('route', {
+                'type': 'geojson',
+                'data': {
+                    'type': 'Feature',
+                    'properties': {},
+                    'geometry': {
+                        'type': 'LineString',
+                        'coordinates': currentRouteCoordinates
+                    }
+                }
+            });
+        }
+        if (!map.getLayer('route')) {
+            map.addLayer({
+                'id': 'route',
+                'type': 'line',
+                'source': 'route',
+                'layout': {
+                    'line-join': 'round',
+                    'line-cap': 'round'
+                },
+                'paint': {
+                    'line-color': '#003366',
+                    'line-width': 6,
+                    'line-opacity': 0.8
+                },
+                'minzoom': 2,
+                'maxzoom': 17
+            });
+        }
+    }
+
+    // --- Flytta route-buffer & route ovanför "always-top" för att alltid vara överst ---
+    if (map.getLayer('always-top')) {
+        if (map.getLayer('route-buffer')) map.moveLayer('route-buffer', 'always-top');
+        if (map.getLayer('route')) map.moveLayer('route', 'always-top');
+    }
+    if (map.getLayer('measure-line')) map.moveLayer('measure-line', 'always-top');
+    if (map.getLayer('measure-points')) map.moveLayer('measure-points', 'always-top');
 });
 
 function addClickablePointsAndLines() {
@@ -2475,6 +2535,8 @@ function removeRoute() {
 
 
 function addRoute(coordinates) {
+    currentRouteCoordinates = coordinates; // Spara rutten
+
     removeRouteAndBuffer();
 
     map.addSource('route', {
@@ -2501,12 +2563,16 @@ function addRoute(coordinates) {
             'line-color': '#003366',
             'line-width': 6,
             'line-opacity': 0.8
-        }
+        },
+        'minzoom': 2,
+        'maxzoom': 17
     });
 
-    if (map.getLayer('route-buffer')) map.moveLayer('route-buffer');
-    if (map.getLayer('route')) map.moveLayer('route');
-
+    // --- Flytta route-buffer och route överst, ovanför always-top ---
+    if (map.getLayer('always-top')) {
+        if (map.getLayer('route-buffer')) map.moveLayer('route-buffer', 'always-top');
+        if (map.getLayer('route')) map.moveLayer('route', 'always-top');
+    }
 
     const currentRadius = parseInt(document.getElementById('route-radius')?.value || 50);
     updateRouteBuffer(coordinates, currentRadius);
